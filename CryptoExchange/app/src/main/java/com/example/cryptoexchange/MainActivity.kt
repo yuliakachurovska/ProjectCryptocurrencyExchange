@@ -4,44 +4,42 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.cryptoexchange.domain.usecase.ObserveTopCryptosUseCase
+import com.example.cryptoexchange.domain.usecase.SyncTopCryptosUseCase
+import com.example.cryptoexchange.presentation.fake.FakeCryptoRepository
+import com.example.cryptoexchange.presentation.ui.screens.CryptoExchangeScreen
+import com.example.cryptoexchange.presentation.viewmodel.CryptoViewModel
+import com.example.cryptoexchange.presentation.viewmodel.CryptoViewModelFactory
 import com.example.cryptoexchange.ui.theme.CryptoExchangeTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent {
-            CryptoExchangeTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+
+        val fakeRepository = FakeCryptoRepository()
+        val observeUseCase = ObserveTopCryptosUseCase(fakeRepository)
+        val syncUseCase = SyncTopCryptosUseCase(fakeRepository)
+
+        val factory = CryptoViewModelFactory(
+            observeTopCryptosUseCase = observeUseCase,
+            syncStatusFlow = fakeRepository.syncStatus,
+            triggerManualSync = {
+                lifecycleScope.launch {
+                    syncUseCase()
                 }
             }
+        )
+
+        setContent {
+            CryptoExchangeTheme {
+                val cryptoViewModel: CryptoViewModel = viewModel(factory = factory)
+                CryptoExchangeScreen(viewModel = cryptoViewModel)
+            }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    CryptoExchangeTheme {
-        Greeting("Android")
     }
 }
